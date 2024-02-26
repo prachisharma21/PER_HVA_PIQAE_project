@@ -225,3 +225,4 @@ print("time for tomo = ", -tomo_time + PER_time)
 # Add the state-vector, QASM and noisy backend code for comparision
 # Make this code object oriented 
 # Make the code cleaner 
+# Running the Guadlupe on msi cluster 
