@@ -226,3 +226,4 @@ print("time for tomo = ", -tomo_time + PER_time)
 # Make this code object oriented 
 # Make the code cleaner 
 # Running the Guadlupe on msi cluster 
+# Update all the code here and then uload the files on cluster 
