@@ -18,23 +18,19 @@ plt.style.use("ggplot")
 #print(np.pi)
 start_time = time.time()
 
-def quantum_input(backend = FakeQuitoV2()):
-    """ function is to get the basic essentials inputs for the quantum device from the user """    
-    backend = backend 
-    num_qubits = backend.num_qubits
-    return backend, num_qubits
+class Quantum_system:
+    def __init__(self, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4]):
+     self.backend = backend
+     self.initial_backend = initial_layout # could be different than all qubit connectivity as used in this project
+     self.theta_Z_L_1, self.theta_X_L_1, self.theta_ZZ_L_1 = self.model_input()
 
-backend, num_qubits = quantum_input(backend = FakeQuitoV2()) #FakeGuadalupeV2())
+    def circuit_parameters(self): 
+        """ this function gets the input for the problem hamiltonian: Mixed Ising field model and the bond connectivity of the backend for HVA"""
 
-def model_input(geometry = "FakeQuito", J = -1, hx = -1, hz = 0.5, backend_bond_pairs =  [[0, 1],[1, 2],[1, 3],[3, 4]]):
-    """ this function gets the input for the problem hamiltonian: Mixed Ising field model and the bond connectivity of the backend for HVA"""
-    J = J
-    hx = hx 
-    hz = hz
-    bonds = backend_bond_pairs
-    if geometry == "FakeQuito":
-            initial_layout = [0, 1, 2, 3, 4]    
-            # VQE solution for 1 layer HVA 
+        if self.backend == FakeQuitoV2():
+            geometry = "FakeQuito"
+            #initial_layout = [0, 1, 2, 3, 4]    
+            # VQE solution for 1 layer HVA------- hardcoded here but are originally derived from optimizing the VQE solution. (Need to check)
             theta_Z_L_1 = [-1.0903836560221376]
             theta_X_L_1 = [1.5707963013100128]
             theta_ZZ_L_1 = [-1.290063556534689e-08]
@@ -43,9 +39,10 @@ def model_input(geometry = "FakeQuito", J = -1, hx = -1, hz = 0.5, backend_bond_
             #theta_Z_L_2 = [-0.9253781962387742, 0.05297769164990435]
             #theta_X_L_2 = [1.1782568203539736, 0.44552055156550735]
             #theta_ZZ_L_2 = [0.2425000962970552, -0.10748314808466695]
-    elif geometry == "Casablanca":
+        elif self.backend == FakeCasablancaV2(): 
+            geometry = "Casablanca"
             # Casablanca geometry
-            initial_layout = [0, 1, 2, 3, 4, 5, 6]
+            # initial_layout = [0, 1, 2, 3, 4, 5, 6]
             # VQE solution for 1 layer HVA for Casablanca geometry
             theta_Z_L_1 = [-1.114862237442442]
             theta_X_L_1 = [1.5707966423051756]
@@ -55,18 +52,26 @@ def model_input(geometry = "FakeQuito", J = -1, hx = -1, hz = 0.5, backend_bond_
             #theta_Z_L_2 = [-1.0493592817846746, 0.07760329617674103]
             #theta_X_L_2 = [1.2057488386027533, 0.34794432057731883]
             #theta_ZZ_L_2 = [0.218276186042823, -0.16232253800006316]
-    elif geometry == "FakeGuadalupe":
-            initial_layout = range(16)
+        elif self.backend == FakeGuadalupeV2():  
+            geometry = "FakeGuadalupe"
+            # initial_layout = range(16)
             # VQE solution for 1 layer HVA for Quadalupe geometry 
             theta_Z_L_1 = [-1.16677864]
             theta_X_L_1 = [1.57079632]
             theta_ZZ_L_1 = [4.90858079e-09]
-    else: 
-            print("Geometry not supported so far, i.e., no VQE solution provided.")
-    return geometry, initial_layout, theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1
+        else: 
+            print("Geometry not supported so far")
 
-geometry,initial_layout, theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1 = model_input(geometry = "FakeQuito", J = -1, hx = -1, hz = 0.5, backend_bond_pairs =  [[0, 1],[1, 2],[1, 3],[3, 4]])  
-print(initial_layout, theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1) 
+        return geometry, theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1
+
+backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4]) #FakeGuadalupeV2())
+
+def model_input( J = -1, hx = -1, hz = 0.5):
+    """ this function gets the input for the problem hamiltonian: Mixed Ising field model for HVA"""
+    J = J
+    hx = hx 
+    hz = hz
+    return J, hx, hz
 
 def vqeLayer_FakeQuito(theta_ZZ, theta_Z, theta_X, num_qubits = FakeQuitoV2.num_qubits):
     """ VQE layer for the FakeQuito geometry using all qubits and native connectivity"""
@@ -228,7 +233,39 @@ print("time for tomo = ", -tomo_time + PER_time)
 # Running the Guadlupe on msi cluster 
 # Update all the code here and then uload the files on cluster 
 
-def QASM_simulation(shots = 1000, sim_backend = "FakeQuito" ):
-    pass
-    return  
+# Having intial_layout is better---as then you can choose not to use all qubits. 
+def makevqeCircuit(theta_ZZ, theta_Z, theta_X, initial_layout = initial_layout,measure = False, meas_basis = "Z"):
+    num_qubits = len(initial_layout)
+    vqeCircuit = QuantumCircuit(num_qubits)
+    for i in range(len(theta_ZZ)):
+        if geometry == "Casablanca":
+            vqeCircuit.h(range(num_qubits)) # initialize in the |+> state
+            vqeCircuit.barrier()
+            vqeL = vqeLayer_Casablanca(theta_ZZ[i], theta_Z[i], theta_X[i])
+        elif geometry == "FakeQuito":
+            vqeCircuit.h(range(num_qubits)) # initialize in the |+> state
+            vqeCircuit.barrier()
+            vqeL = vqeLayer_FakeQuito(theta_ZZ[i], theta_Z[i], theta_X[i], num_qubits)
+        vqeCircuit = vqeCircuit.compose(vqeL)
+        vqeCircuit.barrier()
+    #vqeCircuit.measure_all()
     
+    if measure == True:
+        if meas_basis == "Z":
+            vqeCircuit.measure_all()
+            transpiled = transpile(vqeCircuit, backend, initial_layout = initial_layout)
+        elif meas_basis =="X":
+            vqeCircuit.h(range(num_qubits))
+            vqeCircuit.measure_all()
+            transpiled = transpile(vqeCircuit, backend, initial_layout = initial_layout)
+        else: 
+             print("Measurement not defined")    # Y-measurements can be added
+    else:
+        transpiled = transpile(vqeCircuit, backend, initial_layout = initial_layout)
+    return transpiled
+
+def QASM_simulation(shots = 1000, sim_backend = "FakeQuito", initial_layout = initial_layout):# quantum_circuit =circuits_vqe_no_meas[0].compose  )
+    # apply measurements 
+    circuit_with_meas = makevqeCircuit(theta_ZZ_L_1, theta_Z_L_1, theta_X_L_1, initial_layout = initial_layout,measure = True, meas_basis = "Z")
+    count = Aer.get_backend('qasm_simulator').run(circuit_with_meas, shots=shots).result().get_counts()
+    return count
