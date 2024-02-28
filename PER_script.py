@@ -139,6 +139,47 @@ class CircuitBuilder(Quantum_system):
         #vqeLayer.barrier()
 
         return vqeLayer
+    
+    def vqeLayer_FakeGuadalupeV2(self):
+        """ VQE layer for the FakeGuadalupeV2() geometry using all qubits and native connectivity"""
+        vqeLayer = QuantumCircuit(self.num_qubits)
+        # Choosen bond pairs according to the native qubit connectivity of the backend
+        bonds_1 = [(0, 1), (2, 3), (4, 7), (10, 12)]
+        bonds_2 = [[1, 2], [3, 5],[7,6],[8,9],[12,13]] 
+        bonds_3 = [[1, 4], [7,10],[12,15]] # ,[8,11]
+        bonds_4 = [(5, 8) ,(11, 14)]
+        bonds_5 = [[8,11]]
+
+        vqeLayer.rz(self.theta_Z_L_1, range(self.num_qubits))
+        vqeLayer.rx(self.theta_X_L_1, range(self.num_qubits))
+        #vqeLayer.barrier()
+    
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+        vqeLayer.rz(self.theta_ZZ_L_1, [bonds_1[i][1] for i in range(len(bonds_1))])
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+        vqeLayer.rz(self.theta_ZZ_L_1, [bonds_2[i][1] for i in range(len(bonds_2))])
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+        vqeLayer.rz(self.theta_ZZ_L_1, [bonds_3[i][1] for i in range(len(bonds_3))])
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
+        vqeLayer.rz(self.theta_ZZ_L_1, [bonds_4[i][1] for i in range(len(bonds_4))])
+        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
+        vqeLayer.rz(self.theta_ZZ_L_1, [bonds_5[i][1] for i in range(len(bonds_5))])
+        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
+    
+        #vqeLayer.barrier()
+        return vqeLayer
 
 
 def vqeLayer_FakeQuito(theta_ZZ, theta_Z, theta_X, num_qubits = FakeQuitoV2.num_qubits):
@@ -300,6 +341,9 @@ print("time for tomo = ", -tomo_time + PER_time)
 # Make the code cleaner 
 # Running the Guadlupe on msi cluster 
 # Update all the code here and then uload the files on cluster 
+
+# think if we can add bond pairs for the QuantumSystem
+# and can we loop over the bonds pairs to put the gates instead of typing everything again and again
 
 # Having intial_layout is better---as then you can choose not to use all qubits. 
 def makevqeCircuit(theta_ZZ, theta_Z, theta_X, initial_layout = initial_layout,measure = False, meas_basis = "Z"):
