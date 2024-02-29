@@ -63,6 +63,7 @@ class Quantum_system:
         return theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1
 
 
+
 def model_input( J = -1, hx = -1, hz = 0.5):
     """ this function gets the input for the problem hamiltonian: Mixed Ising field model for HVA"""
     J = J
@@ -224,66 +225,87 @@ class error_mitigation():
         return circuit_results
 
 
-def tomography_step( circuits = None, pair_samples = 1,single_samples =1, depths = [2,4,8,16], backend = FakeQuitoV2(), initial_layout = []):
+def tomography_step( circuits = None, pair_samples = 1,single_samples =1, depths = [2,4,8,16]
+                    , backend = FakeQuitoV2(), initial_layout = [],shots = 1000):
     experiment = tomography(circuits = circuits, inst_map = initial_layout, backend = backend) # add initial layout as a parameter here
     # to generate the circuits of different depths
     experiment.generate(samples = pair_samples, single_samples = single_samples, depths =depths)
     #run the experiment
-    experiment.run(executor)
+    help = helper_class(backend=backend)
+    experiment.run(help.executor)
     noisedataframe = experiment.analyze()
     return experiment, noisedataframe
 
-def PER_step(experiment = None, expectation = [], samples = 10, noise_strengths = [0, 0.25, 0.5], circuits = None):
+def PER_step(experiment = None, expectations = [], samples = 10, noise_strengths = [0, 0.25, 0.5],
+             circuits = None,backend = FakeQuitoV2(), initial_layout = [],shots = 1000):
     perexp = experiment.create_per_experiment(circuits)
     perexp.generate(expectations = expectations, samples = samples, noise_strengths = noise_strengths)
     print(perexp.meas_bases)
-    perexp.run(executor)
+    help = helper_class(backend=backend)
+    perexp.run(help.executor)#(circuits = circuits,backend = backend, shots = shots))
     circuit_results = perexp.analyze() #analyze the circuits to carry the above process out for each circuit, depth, and expectation value,
     #and apply vZNE
     return circuit_results
 
-shots = 1000
-def executor(circuits, backend = FakeQuitoV2()):
-    return backend.run(circuits, shots = shots).result().get_counts()
+# Make a helper.py and put such functions there
+class helper_class(Quantum_system):
+    def __init__(self,backend):
+        super().__init__(backend)
+    def executor(self, circuits, shots = 1000):
+        return self.backend.run(circuits, shots = shots).result().get_counts()
 
-backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
-print("type here",type([1,2,3]))
-circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
-#Circuits sent to tomography has to be a list
-circuits_w_no_meas = [circuits.makevqeCircuit(measure = False)]
-print(circuits_w_no_meas[0].draw())
-print(type(circuits_w_no_meas))
-# the following makes me feel that we could leave this part just as a function in main ()
-experiment,noisedataframe = tomography_step( circuits = circuits_w_no_meas , pair_samples = 1, single_samples = 1, depths = [2,4,8,16]
-                                            , backend=backend_configuration.backend,initial_layout=backend_configuration.initial_layout)
-#Noise_tomography.tomography_step(pair_samples = 1, single_samples = 1, depths = [2,4,8,16], circuit = circuits_w_no_meas)
+#shots = 1000
 
-print("noise coefficients:", list(noisedataframe.noisemodels.values())[0].coeffs)
-print("spam coefficients:", list(zip(noisedataframe.spam.keys(), noisedataframe.spam.values())))
-
-tomo_time = time.time()
-print("time for tomo = ", tomo_time - start_time)
-
-## ADD a check for layer decomposition
+def executor(circuits, backend = FakeQuitoV2(),shots = 1000):
+        return backend.run(circuits, shots = shots).result().get_counts()
 
 
-#The exponential decay shows that the channel was properly diagonalized
-layer = experiment.analysis.get_layer_data(0)
-#layer.graph((0,),(1,),(0,1)) #input qubits and qubit links as tuples#The exponential decay shows that the channel was properly diagonalized
-layer = experiment.analysis.get_layer_data(0)
-#layer.graph((0,),(1,),(0,1)) #input qubits and qubit links as tuples
-print("here done with tomo")
+def main():
+  
+    backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
+    circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
+    #print("Backend =", backend)
+    #Circuits sent to tomography has to be a list
+    circuits_w_no_meas = [circuits.makevqeCircuit(measure = False)]
+    print(circuits_w_no_meas[0].draw())
+    #print(type(circuits_w_no_meas))
+    # the following makes me feel that we could leave this part just as a function in main ()
+    experiment,noisedataframe = tomography_step( circuits = circuits_w_no_meas , pair_samples = 1, single_samples = 1, depths = [2,4,8,16],
+                                                backend=backend_configuration.backend,initial_layout=backend_configuration.initial_layout, shots = 1000)
+    #Noise_tomography.tomography_step(pair_samples = 1, single_samples = 1, depths = [2,4,8,16], circuit = circuits_w_no_meas)
 
-expectations = ["ZZZZX"]#["ZIIIIIIIIIIIIIII"]#,"IIIIX","IZIII","IIZII","IIIZI","ZIIII"] 
+    print("noise coefficients:", list(noisedataframe.noisemodels.values())[0].coeffs)
+    print("spam coefficients:", list(zip(noisedataframe.spam.keys(), noisedataframe.spam.values())))
+
+    tomo_time = time.time()
+    print("time for tomo = ", tomo_time - start_time)
+
+    ## ADD a check for layer decomposition
 
 
-circ_res = PER_step(experiment= experiment, expectation=expectations, samples=10, noise_strengths=[0,0.25,0.5],circuits = circuits_w_no_meas)
-#op = Pauli('ZIIIIIIIIIIIIIII')
-print(" Error Mitigated value foris", circ_res[0].get_result("ZZZZX").expectation)
+    #The exponential decay shows that the channel was properly diagonalized
+    layer = experiment.analysis.get_layer_data(0)
+    #layer.graph((0,),(1,),(0,1)) #input qubits and qubit links as tuples#The exponential decay shows that the channel was properly diagonalized
+    layer = experiment.analysis.get_layer_data(0)
+    #layer.graph((0,),(1,),(0,1)) #input qubits and qubit links as tuples
+    print("here done with tomo")
+
+    expectations = ["ZZZZX"]#["ZIIIIIIIIIIIIIII"]#,"IIIIX","IZIII","IIZII","IIIZI","ZIIII"] 
 
 
-PER_time = time.time()
-print("time for tomo = ", -tomo_time + PER_time)
+    circ_res = PER_step(experiment= experiment, expectations=expectations, samples=10, noise_strengths=[0,0.25,0.5],circuits = circuits_w_no_meas,
+                     backend=backend_configuration.backend,initial_layout=backend_configuration.initial_layout, shots = 1000)
+    #op = Pauli('ZIIIIIIIIIIIIIII')
+    print(" Error Mitigated value foris", circ_res[0].get_result("ZZZZX").expectation)
+
+
+    PER_time = time.time()
+    print("time for tomo = ", -tomo_time + PER_time)
+
+    return 
+
+if __name__ == "__main__":
+    main()
 
 
 ## TODO
