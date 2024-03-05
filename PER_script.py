@@ -259,6 +259,11 @@ class helper_class(Quantum_system):
 def executor(circuits, backend = FakeQuitoV2(),shots = 1000):
         return backend.run(circuits, shots = shots).result().get_counts()
 
+# TODO SV calculations
+
+
+
+
 
 def main():
   
