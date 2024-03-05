@@ -16,13 +16,18 @@ from qiskit.quantum_info import SparsePauliOp
 # except we need to change the parameters
 # Quantum_system
 class CircuitBuilder():
-    def __init__(self,backend , initial_layout , geometry):
-        super().__init__(backend,initial_layout,geometry)
+    def __init__(self,backend , initial_layout , geometry,params):
+        #super().__init__(backend,initial_layout,geometry,params)
         #print("backend here is ", self.backend)
+        self.backend = backend
+        self.params = params
         self.num_qubits = len(self.initial_layout)
 
-    def vqeLayer_FakeQuito(self,theta_ZZ, theta_Z, theta_X):
+    def vqeLayer_FakeQuito(self,params):#theta_ZZ, theta_Z, theta_X): #params has to be a list a list for each layer
         """ VQE layer for the FakeQuito geometry using all qubits and native connectivity"""
+        theta_Z = params[0] # make these bonds a list of bond list 
+        theta_X = params[1]
+        theta_ZZ = params[2]
         vqeLayer = QuantumCircuit(self.num_qubits)
         # Choosen bond pairs according to the native qubit connectivity of the backend
         bonds_1 = [[0, 1], [3, 4]]  # these bond pairs should be accessible as well-- they will be needed for hamiltonian expectation for eg. 
@@ -92,22 +97,22 @@ class CircuitBuilder():
         return vqeLayer
     
     # Having intial_layout is better---as then you can choose not to use all qubits. 
-    def makevqeCircuit(self, measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
+    def makevqeCircuit(self,  measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
         
         vqeCircuit = QuantumCircuit(self.num_qubits)
-        for i in range(len(self.theta_ZZ_L_1)):
+        for i in range(len(self.params)/3-1): #len params list /number of parameters in the circuit => 6/3-1 = 1 and range(1)=>[0,1]
             if self.geometry == "FakeCasablancaV2":
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
-                vqeL = self.vqeLayer_Casablanca(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+                vqeL = self.vqeLayer_Casablanca(self.params[3*i:3*(i+1)]) # self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
             elif self.geometry == "FakeQuitoV2":
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
-                vqeL = self.vqeLayer_FakeQuito(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+                vqeL = self.vqeLayer_FakeQuito(self.params[3*i:3*(i+1)]) #self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
             elif self.geometry == "FakeGuadalupeV2":
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
-                vqeL = self.vqeLayer_FakeGuadalupeV2(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+                vqeL = self.vqeLayer_FakeGuadalupeV2(self.params[3*i:3*(i+1)])#self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
             vqeCircuit = vqeCircuit.compose(vqeL)
             vqeCircuit.barrier()
                
@@ -171,7 +176,7 @@ def Hamiltonian_MFIM():
 print(Hamiltonian_MFIM())
 
     
-
+bonds = [[0, 1],[1, 2],[1, 3],[3, 4]]
 def ham_pqc_sv(params,  geometry = "FakeQuitoV2", initial_layout = [0, 1, 2, 3, 4]): #num_layers = 1,
     Vcircuit= CircuitBuilder(params, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
     #makevqeCircuit_meas_Z(params, num_layers = num_layers, bonds_all = bonds_all, num_qubits = num_qubits)
@@ -184,10 +189,11 @@ def ham_pqc_sv(params,  geometry = "FakeQuitoV2", initial_layout = [0, 1, 2, 3, 
     #    print("Hamiltonian matrix not defined.")
     #res = np.vdot(state_tf, ham_matrix.dot(state_tf))
     res = state.expectation_value(Hamiltonian_MFIM())
+    res = np.real(res)
     return res
 
 
-def 
+def optimizer(init_params , bonds = bonds, args = (),method ="" )
 
 
 
