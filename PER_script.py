@@ -74,7 +74,7 @@ def model_input( J = -1, hx = -1, hz = 0.5):
 class CircuitBuilder(Quantum_system):
     def __init__(self,backend , initial_layout , geometry):
         super().__init__(backend,initial_layout,geometry)
-        print("backend here is ", self.backend)
+        #print("backend here is ", self.backend)
         self.num_qubits = len(self.initial_layout)
 
     def vqeLayer_FakeQuito(self,theta_ZZ, theta_Z, theta_X):

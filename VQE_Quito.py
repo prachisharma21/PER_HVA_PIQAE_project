@@ -1,0 +1,196 @@
+# Essential imports for the calculations
+from qiskit import QuantumCircuit, Aer, transpile, ClassicalRegister
+from qiskit.visualization import plot_gate_map, plot_error_map, plot_histogram
+from qiskit.providers.fake_provider import FakeQuitoV2
+from qiskit.providers.fake_provider import FakeGuadalupeV2
+from qiskit.providers.fake_provider import FakeCasablancaV2
+from qiskit.quantum_info.operators.symplectic import Pauli
+from matplotlib import pyplot as plt
+import sys
+import numpy as np
+import graphviz
+import time 
+from qiskit.quantum_info import SparsePauliOp 
+
+# the classes CircuitBuilder and QuantumSystem are in PER script and can be used here 
+# except we need to change the parameters
+# Quantum_system
+class CircuitBuilder():
+    def __init__(self,backend , initial_layout , geometry):
+        super().__init__(backend,initial_layout,geometry)
+        #print("backend here is ", self.backend)
+        self.num_qubits = len(self.initial_layout)
+
+    def vqeLayer_FakeQuito(self,theta_ZZ, theta_Z, theta_X):
+        """ VQE layer for the FakeQuito geometry using all qubits and native connectivity"""
+        vqeLayer = QuantumCircuit(self.num_qubits)
+        # Choosen bond pairs according to the native qubit connectivity of the backend
+        bonds_1 = [[0, 1], [3, 4]]  # these bond pairs should be accessible as well-- they will be needed for hamiltonian expectation for eg. 
+        bonds_2 = [[1, 2]] # could be added to the main QuantumSystem class as they are dependent on the backend geometry
+        bonds_3 = [[1, 3]]
+        # the RZ and RZ terms for the field terms of the hamiltonian. 
+        #Applied first to get the sequence of layers for PER later to come out correctly, i.e., single qubit gates first followed by clifford gates. 
+        
+        vqeLayer.rz(theta_Z, range(self.num_qubits))
+        vqeLayer.rx(theta_X, range(self.num_qubits))
+    
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+        vqeLayer.rz(theta_ZZ, [bonds_1[i][1] for i in range(len(bonds_1))])
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+        vqeLayer.rz(theta_ZZ, [bonds_2[i][1] for i in range(len(bonds_2))])
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+        vqeLayer.rz(theta_ZZ, [bonds_3[i][1] for i in range(len(bonds_3))])
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+   
+        #vqeLayer.barrier()
+
+        return vqeLayer
+    
+    def vqeLayer_FakeGuadalupeV2(self,theta_ZZ, theta_Z, theta_X):
+        """ VQE layer for the FakeGuadalupeV2() geometry using all qubits and native connectivity"""
+        vqeLayer = QuantumCircuit(self.num_qubits)
+        # Choosen bond pairs according to the native qubit connectivity of the backend
+        bonds_1 = [(0, 1), (2, 3), (4, 7), (10, 12)]
+        bonds_2 = [[1, 2], [3, 5],[7,6],[8,9],[12,13]] 
+        bonds_3 = [[1, 4], [7,10],[12,15]] # ,[8,11]
+        bonds_4 = [(5, 8) ,(11, 14)]
+        bonds_5 = [[8,11]]
+
+        vqeLayer.rz(theta_Z, range(self.num_qubits))
+        vqeLayer.rx(theta_X, range(self.num_qubits))
+        #vqeLayer.barrier()
+    
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+        vqeLayer.rz(theta_ZZ, [bonds_1[i][1] for i in range(len(bonds_1))])
+        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+        vqeLayer.rz(theta_ZZ, [bonds_2[i][1] for i in range(len(bonds_2))])
+        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+        vqeLayer.rz(theta_ZZ, [bonds_3[i][1] for i in range(len(bonds_3))])
+        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
+        vqeLayer.rz(theta_ZZ, [bonds_4[i][1] for i in range(len(bonds_4))])
+        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
+        #vqeLayer.barrier()
+
+        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
+        vqeLayer.rz(theta_ZZ, [bonds_5[i][1] for i in range(len(bonds_5))])
+        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
+    
+        #vqeLayer.barrier()
+        return vqeLayer
+    
+    # Having intial_layout is better---as then you can choose not to use all qubits. 
+    def makevqeCircuit(self, measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
+        
+        vqeCircuit = QuantumCircuit(self.num_qubits)
+        for i in range(len(self.theta_ZZ_L_1)):
+            if self.geometry == "FakeCasablancaV2":
+                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
+                vqeCircuit.barrier()
+                vqeL = self.vqeLayer_Casablanca(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+            elif self.geometry == "FakeQuitoV2":
+                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
+                vqeCircuit.barrier()
+                vqeL = self.vqeLayer_FakeQuito(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+            elif self.geometry == "FakeGuadalupeV2":
+                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
+                vqeCircuit.barrier()
+                vqeL = self.vqeLayer_FakeGuadalupeV2(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
+            vqeCircuit = vqeCircuit.compose(vqeL)
+            vqeCircuit.barrier()
+               
+        if measure == True:
+            if meas_basis == "Z":
+                vqeCircuit.measure_all()
+                transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
+            elif meas_basis =="X":
+                vqeCircuit.h(range(self.num_qubits))
+                vqeCircuit.measure_all()
+                transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
+            else: 
+                print("Measurement not defined")    # Y-measurements can be added
+        else: 
+            transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
+        return transpiled
+    
+
+
+
+def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
+    paulis_str = []
+    s = "I"*(num_qubits - num) 
+    if num == 2:
+        for pauli in [ham_pauli]:
+            for bond in bonds: 
+            #print(bond)
+                list_s = list(s)
+                list_s.insert(bond[0], pauli)
+                list_s.insert(bond[1], pauli)
+            # if else below is only if you are not using SparsePauliOp 
+            #if pauli == "X":
+            #    pauli_string="1.0*" + ''.join(list_s)
+            #elif pauli == "Y":
+            #    pauli_string="1.0*" + ''.join(list_s)
+            #elif pauli == "Z":
+            #    pauli_string="-1.0*" + ''.join(list_s)
+                paulis_str.append(''.join(list_s))
+                print(paulis_str)
+            #ham.append(pauli_string)
+    elif num == 1:
+        for pauli in [ham_pauli]:
+            for i in range(num_qubits):
+                list_s = list(s)
+                list_s.insert(i, pauli)
+                paulis_str.append(''.join(list_s))
+    return paulis_str
+        
+def Hamiltonian_MFIM():
+    paulis_ZZ = ham_str_creation(5,ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 2)
+    #print(paulis_ZZ)
+    paulis_Z = ham_str_creation(5, ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
+    print(paulis_Z)
+    paulis_X = ham_str_creation(5, ham_pauli = "X", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
+    ham_ZZ = ["".join(reversed([p for p in pauli])) for pauli in paulis_ZZ]
+
+    hamiltonian  = SparsePauliOp(ham_ZZ, coeffs = -1.0)+SparsePauliOp(paulis_Z, coeffs= 0.5)+SparsePauliOp(paulis_X, coeffs = -1)
+
+    return hamiltonian 
+
+print(Hamiltonian_MFIM())
+
+    
+
+def ham_pqc_sv(params,  geometry = "FakeQuitoV2", initial_layout = [0, 1, 2, 3, 4]): #num_layers = 1,
+    Vcircuit= CircuitBuilder(params, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
+    #makevqeCircuit_meas_Z(params, num_layers = num_layers, bonds_all = bonds_all, num_qubits = num_qubits)
+    state = np.array(Aer.get_backend('statevector_simulator').run(Vcircuit).result().get_statevector())
+    # we will incorporate the pauli strings in qiskit way, i.e., little endian and will perform SV calns also in same way
+    #state_tf = little_to_big_endian(state, num_qubits)
+    #if bonds_all == bonds_kagome_5:     
+    #    ham_matrix = np.array(map_hamiltonian(ham_kagome_5))
+    #else:
+    #    print("Hamiltonian matrix not defined.")
+    #res = np.vdot(state_tf, ham_matrix.dot(state_tf))
+    res = state.expectation_value(Hamiltonian_MFIM())
+    return res
+
+
+def 
+
+
+
+
+    #backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
+    #circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
