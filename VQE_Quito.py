@@ -16,16 +16,23 @@ from qiskit.quantum_info import SparsePauliOp
 # except we need to change the parameters
 # Quantum_system
 class CircuitBuilder():
-    def __init__(self,backend , initial_layout , geometry,params):
+    def __init__(self,params,backend , initial_layout , geometry):
         #super().__init__(backend,initial_layout,geometry,params)
         #print("backend here is ", self.backend)
+        
         self.backend = backend
+        print("backend",self.backend)
+        self.initial_layout = initial_layout
+        print("self.initlayout", self.initial_layout)
+        self.geometry = geometry
+        print("geometry", self.geometry)
         self.params = params
         self.num_qubits = len(self.initial_layout)
+       
 
     def vqeLayer_FakeQuito(self,params):#theta_ZZ, theta_Z, theta_X): #params has to be a list a list for each layer
         """ VQE layer for the FakeQuito geometry using all qubits and native connectivity"""
-        theta_Z = params[0] # make these bonds a list of bond list 
+        theta_Z = params[0] # make bonds a list of bond list 
         theta_X = params[1]
         theta_ZZ = params[2]
         vqeLayer = QuantumCircuit(self.num_qubits)
@@ -97,15 +104,17 @@ class CircuitBuilder():
         return vqeLayer
     
     # Having intial_layout is better---as then you can choose not to use all qubits. 
-    def makevqeCircuit(self,  measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
+    def makevqeCircuit(self, measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
         
         vqeCircuit = QuantumCircuit(self.num_qubits)
-        for i in range(len(self.params)/3-1): #len params list /number of parameters in the circuit => 6/3-1 = 1 and range(1)=>[0,1]
+        for i in range(int(len(self.params)/3)): #len params list /number of parameters in the circuit => 6/3-1 = 1 and range(1)=>[0,1]
+            print("i = ",i)
             if self.geometry == "FakeCasablancaV2":
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
                 vqeL = self.vqeLayer_Casablanca(self.params[3*i:3*(i+1)]) # self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
             elif self.geometry == "FakeQuitoV2":
+                print("here")
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
                 vqeL = self.vqeLayer_FakeQuito(self.params[3*i:3*(i+1)]) #self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
@@ -127,7 +136,7 @@ class CircuitBuilder():
             else: 
                 print("Measurement not defined")    # Y-measurements can be added
         else: 
-            transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
+            transpiled = vqeCircuit # transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
         return transpiled
     
 
@@ -151,7 +160,7 @@ def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
             #elif pauli == "Z":
             #    pauli_string="-1.0*" + ''.join(list_s)
                 paulis_str.append(''.join(list_s))
-                print(paulis_str)
+                #print(paulis_str)
             #ham.append(pauli_string)
     elif num == 1:
         for pauli in [ham_pauli]:
@@ -165,7 +174,7 @@ def Hamiltonian_MFIM():
     paulis_ZZ = ham_str_creation(5,ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 2)
     #print(paulis_ZZ)
     paulis_Z = ham_str_creation(5, ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
-    print(paulis_Z)
+    #print(paulis_Z)
     paulis_X = ham_str_creation(5, ham_pauli = "X", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
     ham_ZZ = ["".join(reversed([p for p in pauli])) for pauli in paulis_ZZ]
 
@@ -173,14 +182,16 @@ def Hamiltonian_MFIM():
 
     return hamiltonian 
 
-print(Hamiltonian_MFIM())
+#print(Hamiltonian_MFIM())
 
     
-bonds = [[0, 1],[1, 2],[1, 3],[3, 4]]
-def ham_pqc_sv(params,  geometry = "FakeQuitoV2", initial_layout = [0, 1, 2, 3, 4]): #num_layers = 1,
-    Vcircuit= CircuitBuilder(params, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
-    #makevqeCircuit_meas_Z(params, num_layers = num_layers, bonds_all = bonds_all, num_qubits = num_qubits)
-    state = np.array(Aer.get_backend('statevector_simulator').run(Vcircuit).result().get_statevector())
+bonds = [[0, 1],[1, 2],[1, 3],[3, 4]] # self,backend , initial_layout , geometry,params
+def ham_pqc_sv(params =[],backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"): #num_layers = 1,
+    Vcircuit= CircuitBuilder(params, backend , initial_layout , geometry)
+    circ_w_no_meas = [Vcircuit.makevqeCircuit(measure = False)]
+    #print(circ_w_no_meas[0].draw())
+    
+    state = Aer.get_backend('statevector_simulator').run(circ_w_no_meas).result().get_statevector()
     # we will incorporate the pauli strings in qiskit way, i.e., little endian and will perform SV calns also in same way
     #state_tf = little_to_big_endian(state, num_qubits)
     #if bonds_all == bonds_kagome_5:     
@@ -190,12 +201,24 @@ def ham_pqc_sv(params,  geometry = "FakeQuitoV2", initial_layout = [0, 1, 2, 3, 
     #res = np.vdot(state_tf, ham_matrix.dot(state_tf))
     res = state.expectation_value(Hamiltonian_MFIM())
     res = np.real(res)
+    print(res)
+    return res
+#print("length check = ",int(len([1,2,3,4,5,6])/3))
+#theta_Z_L_1 = [-1.0903836560221376]
+#theta_X_L_1 = [1.5707963013100128]
+#theta_ZZ_L_1 = [-1.290063556534689e-08]
+init_params =  np.random.uniform(-np.pi/7, np.pi/7, 3)
+# [np.pi,np.pi/2,np.pi/4]#[-1,1.2,0.1]#[-1.0903836560221376,1.5707963013100128,-1.290063556534689e-08]
+#[np.pi,np.pi/2,np.pi/4]
+print(ham_pqc_sv(params=init_params,backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"))
+import scipy
+#params =[],backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"
+def optimizer(init_params,backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"):
+    res = scipy.optimize.minimize(ham_pqc_sv, init_params, args = ( backend , initial_layout , geometry),method ="BFGS")
     return res
 
-
-def optimizer(init_params , bonds = bonds, args = (),method ="" )
-
-
+res_vqe_sv=optimizer(init_params)
+print(res_vqe_sv)
 
 
     #backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
