@@ -21,20 +21,6 @@ plt.style.use("ggplot")
 
 start_time = time.time()
 
-
-def model_input( J = -1, hx = -1, hz = 0.5):
-    """ this function gets the input for the problem hamiltonian: Mixed Ising field model for HVA"""
-    J = J
-    hx = hx 
-    hz = hz
-    return J, hx, hz
-
-
-#circuits_vqe_no_meas = [makevqeCircuit_no_meas(theta_ZZ_L_1, theta_Z_L_1, theta_X_L_1, initial_layout)]
-
-#print(circuits_vqe_no_meas[0])
-
-
 ## PER functions and steps 
 
 class Noise_tomography(Quantum_system):
@@ -171,4 +157,9 @@ if __name__ == "__main__":
 # and can we loop over the bonds pairs to put the gates instead of typing everything again and again
 # figure out how to add the measurements without making it spagetti 
 
+# TODO 
+
+# 1. UPDATE THIS SCRIPT FROM THE CLUSTER SCRIPT WITH SV AND QASM/NOISYBACKEND RESULTS FOR COMPARSION 
+# 2. IMPORT JSON FILES FOR PAULI STRINGS
+# 3. TRY AND EXPECT ROUTINE TO SEE IF PICKLE FOR TOMO EXIST THEN USE THAT OR RUN TOMOGRAPHY STEP 
 

@@ -13,6 +13,18 @@ import graphviz
 import time 
 from qiskit.quantum_info import SparsePauliOp 
 from circuit_builder import CircuitBuilder
+
+
+
+
+def model_input( J = -1, hx = -1, hz = 0.5):
+    """ this function gets the input for the problem hamiltonian: Mixed Ising field model for HVA"""
+    J = J
+    hx = hx 
+    hz = hz
+    return J, hx, hz
+
+
 def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
     paulis_str = []
     s = "I"*(num_qubits - num) 
@@ -41,8 +53,8 @@ def Hamiltonian_MFIM(bonds = []):
     #print(paulis_Z)
     paulis_X = ham_str_creation(num_qubits= 16, ham_pauli = "X", bonds = bonds,num = 1)
     ham_ZZ = ["".join(reversed([p for p in pauli])) for pauli in paulis_ZZ]
-
-    hamiltonian  = SparsePauliOp(ham_ZZ, coeffs = -1.0)+SparsePauliOp(paulis_Z, coeffs= 0.5)+SparsePauliOp(paulis_X, coeffs = -1)
+    J, hx, hz = model_input( J = -1, hx = -1, hz = 0.5)
+    hamiltonian  = SparsePauliOp(ham_ZZ, coeffs = J)+SparsePauliOp(paulis_Z, coeffs= hz)+SparsePauliOp(paulis_X, coeffs = hx)
     #print(hamiltonian)
     return hamiltonian 
 
