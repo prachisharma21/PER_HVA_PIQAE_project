@@ -21,11 +21,11 @@ class CircuitBuilder():
         #print("backend here is ", self.backend)
         
         self.backend = backend
-        print("backend",self.backend)
+        #print("backend",self.backend)
         self.initial_layout = initial_layout
-        print("self.initlayout", self.initial_layout)
+        #print("self.initlayout", self.initial_layout)
         self.geometry = geometry
-        print("geometry", self.geometry)
+        #print("geometry", self.geometry)
         self.params = params
         self.num_qubits = len(self.initial_layout)
        
@@ -62,8 +62,11 @@ class CircuitBuilder():
 
         return vqeLayer
     
-    def vqeLayer_FakeGuadalupeV2(self,theta_ZZ, theta_Z, theta_X):
+    def vqeLayer_FakeGuadalupeV2(self,params):
         """ VQE layer for the FakeGuadalupeV2() geometry using all qubits and native connectivity"""
+        theta_Z = params[0] # make bonds a list of bond list 
+        theta_X = params[1]
+        theta_ZZ = params[2]
         vqeLayer = QuantumCircuit(self.num_qubits)
         # Choosen bond pairs according to the native qubit connectivity of the backend
         bonds_1 = [(0, 1), (2, 3), (4, 7), (10, 12)]
@@ -108,13 +111,13 @@ class CircuitBuilder():
         
         vqeCircuit = QuantumCircuit(self.num_qubits)
         for i in range(int(len(self.params)/3)): #len params list /number of parameters in the circuit => 6/3-1 = 1 and range(1)=>[0,1]
-            print("i = ",i)
+            #print("i = ",i)
             if self.geometry == "FakeCasablancaV2":
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
                 vqeL = self.vqeLayer_Casablanca(self.params[3*i:3*(i+1)]) # self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
             elif self.geometry == "FakeQuitoV2":
-                print("here")
+                #print("here")
                 vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
                 vqeCircuit.barrier()
                 vqeL = self.vqeLayer_FakeQuito(self.params[3*i:3*(i+1)]) #self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
@@ -169,17 +172,45 @@ def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
                 list_s.insert(i, pauli)
                 paulis_str.append(''.join(list_s))
     return paulis_str
-        
-def Hamiltonian_MFIM():
-    paulis_ZZ = ham_str_creation(5,ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 2)
+
+#bonds_Guad = [[(0, 1), (2, 3), (4, 7), (10, 12)],[[1, 2], [3, 5],[7,6],[8,9],[12,13]],
+#              [[1, 4], [7,10],[12,15]],[(5, 8) ,(11, 14)],[[8,11]]]
+bonds_Guad = [(0, 1),
+ (1, 2),
+ (2, 3),
+ (3, 5),
+ (5, 8),
+ (8, 9),
+ (8, 11),
+ (11, 14),
+ (14, 13),
+ (13, 12),
+ (12, 15),
+ (1, 4),
+ (4, 7),
+ (7, 6),
+ (7, 10),
+ (10, 12)]
+
+#[ [0, 1], [2, 3], [4, 7], [10, 12],[1, 2], [3, 5],[7,6],[8,9],[12,13],
+             # [1, 4], [7,10],[12,15],(5, 8) ,(11, 14),[8,11]]
+ #bonds_1 = [(0, 1), (2, 3), (4, 7), (10, 12)]
+ #       bonds_2 = [[1, 2], [3, 5],[7,6],[8,9],[12,13]] 
+ #       bonds_3 = [[1, 4], [7,10],[12,15]] # ,[8,11]
+ #       bonds_4 = [(5, 8) ,(11, 14)]
+ #       bonds_5 = [[8,11]]
+
+bonds = [[0, 1],[1, 2],[1, 3],[3, 4]]
+def Hamiltonian_MFIM(bonds = bonds_Guad ):
+    paulis_ZZ = ham_str_creation(num_qubits= 16,ham_pauli = "Z", bonds =bonds,num = 2)
     #print(paulis_ZZ)
-    paulis_Z = ham_str_creation(5, ham_pauli = "Z", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
+    paulis_Z = ham_str_creation(num_qubits= 16, ham_pauli = "Z", bonds =bonds,num = 1)
     #print(paulis_Z)
-    paulis_X = ham_str_creation(5, ham_pauli = "X", bonds = [[0, 1],[1, 2],[1, 3],[3, 4]],num = 1)
+    paulis_X = ham_str_creation(num_qubits= 16, ham_pauli = "X", bonds = bonds,num = 1)
     ham_ZZ = ["".join(reversed([p for p in pauli])) for pauli in paulis_ZZ]
 
     hamiltonian  = SparsePauliOp(ham_ZZ, coeffs = -1.0)+SparsePauliOp(paulis_Z, coeffs= 0.5)+SparsePauliOp(paulis_X, coeffs = -1)
-
+    #print(hamiltonian)
     return hamiltonian 
 
 #print(Hamiltonian_MFIM())
@@ -201,25 +232,31 @@ def ham_pqc_sv(params =[],backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 
     #res = np.vdot(state_tf, ham_matrix.dot(state_tf))
     res = state.expectation_value(Hamiltonian_MFIM())
     res = np.real(res)
-    print(res)
+    print(params, res)
     return res
 #print("length check = ",int(len([1,2,3,4,5,6])/3))
+# Quito
 #theta_Z_L_1 = [-1.0903836560221376]
 #theta_X_L_1 = [1.5707963013100128]
 #theta_ZZ_L_1 = [-1.290063556534689e-08]
-init_params =  np.random.uniform(-np.pi/7, np.pi/7, 3)
+# Guadalupe
+#self.theta_Z_L_1 = [-1.16677864]
+#self.theta_X_L_1 = [1.57079632]
+#self.theta_ZZ_L_1 = [4.90858079e-09]
+opt_params = [-1.16677864,1.57079632,4.90858079e-09]
+init_params =  np.random.uniform(-np.pi/3, np.pi/3, 3)
 # [np.pi,np.pi/2,np.pi/4]#[-1,1.2,0.1]#[-1.0903836560221376,1.5707963013100128,-1.290063556534689e-08]
 #[np.pi,np.pi/2,np.pi/4]
-print(ham_pqc_sv(params=init_params,backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"))
+print(ham_pqc_sv(params=opt_params,backend = FakeGuadalupeV2(), initial_layout = [i for i in range(16)], geometry = "FakeGuadalupeV2"))#"FakeQuitoV2"))
 import scipy
 #params =[],backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"
 def optimizer(init_params,backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"):
     res = scipy.optimize.minimize(ham_pqc_sv, init_params, args = ( backend , initial_layout , geometry),method ="BFGS")
     return res
 
-res_vqe_sv=optimizer(init_params)
+res_vqe_sv=optimizer(init_params,backend = FakeGuadalupeV2(), initial_layout = [i for i in range(16)], geometry = "FakeGuadalupeV2")
 print(res_vqe_sv)
 
 
-    #backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
-    #circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
+#backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
+#circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
