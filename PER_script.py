@@ -14,8 +14,9 @@ sys.path.append("/home/prachi/Documents/Code_PER/AutomatedPERTools-main/pauli_li
 from tomography.experiment import SparsePauliTomographyExperiment as tomography
 from primitives.pauli import QiskitPauli
 
-import circuit_builder
+from circuit_builder import *
 from circuit_builder import CircuitBuilder
+from model_hamiltonian import circuit_optimized_parameters
 plt.style.use("ggplot")
 
 start_time = time.time()
@@ -109,42 +110,6 @@ def executor(circuits, backend = FakeQuitoV2(),shots = 1000):
 # TODO SV calculations
 
 
-def circuit_optimized_parameters(geometry = "FakeQuitoV2"): 
-    """ this function consist of the optimized parameter for minimum energy via SV VQE optimization"""
-
-    if geometry == "FakeQuitoV2":
-        #initial_layout = [0, 1, 2, 3, 4]    
-        # VQE solution for 1 layer HVA------- hardcoded here but are originally derived from optimizing the VQE solution. (Need to check)
-        theta_Z_L_1 = -1.0903836560221376
-        theta_X_L_1 = 1.5707963013100128
-        theta_ZZ_L_1 = -1.290063556534689e-08
-
-            # VQE solution for 2 layer HVA for 4 qubit chain
-            #theta_Z_L_2 = [-0.9253781962387742, 0.05297769164990435]
-            #theta_X_L_2 = [1.1782568203539736, 0.44552055156550735]
-            #theta_ZZ_L_2 = [0.2425000962970552, -0.10748314808466695]
-    elif geometry == "FakeCasablancaV2":
-            # Casablanca geometry
-            # initial_layout = [0, 1, 2, 3, 4, 5, 6]
-            # VQE solution for 1 layer HVA for Casablanca geometry
-        theta_Z_L_1 = -1.114862237442442
-        theta_X_L_1 = 1.5707966423051756
-        theta_ZZ_L_1 = 6.874680103745465e-07
-
-            # VQE solution for 2 layer HVA for Casablanca geometry
-            #theta_Z_L_2 = [-1.0493592817846746, 0.07760329617674103]
-            #theta_X_L_2 = [1.2057488386027533, 0.34794432057731883]
-            #theta_ZZ_L_2 = [0.218276186042823, -0.16232253800006316]
-    elif geometry == "FakeGuadalupeV2":
-        # initial_layout = range(16)
-        # VQE solution for 1 layer HVA for Quadalupe geometry 
-        theta_Z_L_1 = -1.16677864
-        theta_X_L_1 = 1.57079632
-        theta_ZZ_L_1 = 4.90858079e-09
-    else: 
-        print("Geometry not supported so far")
-
-    return [theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1]
 
 def main():
   

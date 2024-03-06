@@ -54,9 +54,9 @@ def circuit_optimized_parameters(geometry = "FakeQuitoV2"):
     if geometry == "FakeQuitoV2":
         #initial_layout = [0, 1, 2, 3, 4]    
         # VQE solution for 1 layer HVA------- hardcoded here but are originally derived from optimizing the VQE solution. (Need to check)
-        theta_Z_L_1 = [-1.0903836560221376]
-        theta_X_L_1 = [1.5707963013100128]
-        theta_ZZ_L_1 = [-1.290063556534689e-08]
+        theta_Z_L_1 = -1.0903836560221376
+        theta_X_L_1 = 1.5707963013100128
+        theta_ZZ_L_1 = -1.290063556534689e-08
 
             # VQE solution for 2 layer HVA for 4 qubit chain
             #theta_Z_L_2 = [-0.9253781962387742, 0.05297769164990435]
@@ -66,9 +66,9 @@ def circuit_optimized_parameters(geometry = "FakeQuitoV2"):
             # Casablanca geometry
             # initial_layout = [0, 1, 2, 3, 4, 5, 6]
             # VQE solution for 1 layer HVA for Casablanca geometry
-        theta_Z_L_1 = [-1.114862237442442]
-        theta_X_L_1 = [1.5707966423051756]
-        theta_ZZ_L_1 = [6.874680103745465e-07]
+        theta_Z_L_1 = -1.114862237442442
+        theta_X_L_1 = 1.5707966423051756
+        theta_ZZ_L_1 = 6.874680103745465e-07
 
             # VQE solution for 2 layer HVA for Casablanca geometry
             #theta_Z_L_2 = [-1.0493592817846746, 0.07760329617674103]
