@@ -14,54 +14,11 @@ sys.path.append("/home/prachi/Documents/Code_PER/AutomatedPERTools-main/pauli_li
 from tomography.experiment import SparsePauliTomographyExperiment as tomography
 from primitives.pauli import QiskitPauli
 
+import circuit_builder
+from circuit_builder import CircuitBuilder
 plt.style.use("ggplot")
-#print(np.pi)
+
 start_time = time.time()
-
-class Quantum_system:
-    def __init__(self, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2"):
-        self.backend = backend
-        self.initial_layout = initial_layout # could be different than all qubit connectivity as used in this project
-        self.geometry = geometry
-        self.theta_Z_L_1, self.theta_X_L_1, self.theta_ZZ_L_1 = self.circuit_parameters()
-
-    def circuit_parameters(self): 
-        """ this function gets the input for the problem hamiltonian: Mixed Ising field model and the bond connectivity of the backend for HVA"""
-
-        if self.geometry == "FakeQuitoV2":
-            #initial_layout = [0, 1, 2, 3, 4]    
-            # VQE solution for 1 layer HVA------- hardcoded here but are originally derived from optimizing the VQE solution. (Need to check)
-            theta_Z_L_1 = [-1.0903836560221376]
-            theta_X_L_1 = [1.5707963013100128]
-            theta_ZZ_L_1 = [-1.290063556534689e-08]
-
-            # VQE solution for 2 layer HVA for 4 qubit chain
-            #theta_Z_L_2 = [-0.9253781962387742, 0.05297769164990435]
-            #theta_X_L_2 = [1.1782568203539736, 0.44552055156550735]
-            #theta_ZZ_L_2 = [0.2425000962970552, -0.10748314808466695]
-        elif self.geometry == "FakeCasablancaV2":
-            # Casablanca geometry
-            # initial_layout = [0, 1, 2, 3, 4, 5, 6]
-            # VQE solution for 1 layer HVA for Casablanca geometry
-            self.theta_Z_L_1 = [-1.114862237442442]
-            self.theta_X_L_1 = [1.5707966423051756]
-            self.theta_ZZ_L_1 = [6.874680103745465e-07]
-
-            # VQE solution for 2 layer HVA for Casablanca geometry
-            #theta_Z_L_2 = [-1.0493592817846746, 0.07760329617674103]
-            #theta_X_L_2 = [1.2057488386027533, 0.34794432057731883]
-            #theta_ZZ_L_2 = [0.218276186042823, -0.16232253800006316]
-        elif self.geometry == "FakeGuadalupeV2":
-            # initial_layout = range(16)
-            # VQE solution for 1 layer HVA for Quadalupe geometry 
-            self.theta_Z_L_1 = [-1.16677864]
-            self.theta_X_L_1 = [1.57079632]
-            self.theta_ZZ_L_1 = [4.90858079e-09]
-        else: 
-            print("Geometry not supported so far")
-
-        return theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1
-
 
 
 def model_input( J = -1, hx = -1, hz = 0.5):
@@ -70,116 +27,6 @@ def model_input( J = -1, hx = -1, hz = 0.5):
     hx = hx 
     hz = hz
     return J, hx, hz
-
-class CircuitBuilder(Quantum_system):
-    def __init__(self,backend , initial_layout , geometry):
-        super().__init__(backend,initial_layout,geometry)
-        #print("backend here is ", self.backend)
-        self.num_qubits = len(self.initial_layout)
-
-    def vqeLayer_FakeQuito(self,theta_ZZ, theta_Z, theta_X):
-        """ VQE layer for the FakeQuito geometry using all qubits and native connectivity"""
-        vqeLayer = QuantumCircuit(self.num_qubits)
-        # Choosen bond pairs according to the native qubit connectivity of the backend
-        bonds_1 = [[0, 1], [3, 4]]  # these bond pairs should be accessible as well-- they will be needed for hamiltonian expectation for eg. 
-        bonds_2 = [[1, 2]] # could be added to the main QuantumSystem class as they are dependent on the backend geometry
-        bonds_3 = [[1, 3]]
-        # the RZ and RZ terms for the field terms of the hamiltonian. 
-        #Applied first to get the sequence of layers for PER later to come out correctly, i.e., single qubit gates first followed by clifford gates. 
-        
-        vqeLayer.rz(theta_Z, range(self.num_qubits))
-        vqeLayer.rx(theta_X, range(self.num_qubits))
-    
-        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
-        vqeLayer.rz(theta_ZZ, [bonds_1[i][1] for i in range(len(bonds_1))])
-        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
-
-        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
-        vqeLayer.rz(theta_ZZ, [bonds_2[i][1] for i in range(len(bonds_2))])
-        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
-
-        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
-        vqeLayer.rz(theta_ZZ, [bonds_3[i][1] for i in range(len(bonds_3))])
-        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
-   
-        #vqeLayer.barrier()
-
-        return vqeLayer
-    
-    def vqeLayer_FakeGuadalupeV2(self,theta_ZZ, theta_Z, theta_X):
-        """ VQE layer for the FakeGuadalupeV2() geometry using all qubits and native connectivity"""
-        vqeLayer = QuantumCircuit(self.num_qubits)
-        # Choosen bond pairs according to the native qubit connectivity of the backend
-        bonds_1 = [(0, 1), (2, 3), (4, 7), (10, 12)]
-        bonds_2 = [[1, 2], [3, 5],[7,6],[8,9],[12,13]] 
-        bonds_3 = [[1, 4], [7,10],[12,15]] # ,[8,11]
-        bonds_4 = [(5, 8) ,(11, 14)]
-        bonds_5 = [[8,11]]
-
-        vqeLayer.rz(theta_Z, range(self.num_qubits))
-        vqeLayer.rx(theta_X, range(self.num_qubits))
-        #vqeLayer.barrier()
-    
-        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
-        vqeLayer.rz(theta_ZZ, [bonds_1[i][1] for i in range(len(bonds_1))])
-        vqeLayer.cx(*zip(*[bonds_1[i] for i in range(len(bonds_1))]))
-        #vqeLayer.barrier()
-
-        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
-        vqeLayer.rz(theta_ZZ, [bonds_2[i][1] for i in range(len(bonds_2))])
-        vqeLayer.cx(*zip(*[bonds_2[i] for i in range(len(bonds_2))]))
-        #vqeLayer.barrier()
-
-        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
-        vqeLayer.rz(theta_ZZ, [bonds_3[i][1] for i in range(len(bonds_3))])
-        vqeLayer.cx(*zip(*[bonds_3[i] for i in range(len(bonds_3))]))
-        #vqeLayer.barrier()
-
-        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
-        vqeLayer.rz(theta_ZZ, [bonds_4[i][1] for i in range(len(bonds_4))])
-        vqeLayer.cx(*zip(*[bonds_4[i] for i in range(len(bonds_4))]))
-        #vqeLayer.barrier()
-
-        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
-        vqeLayer.rz(theta_ZZ, [bonds_5[i][1] for i in range(len(bonds_5))])
-        vqeLayer.cx(*zip(*[bonds_5[i] for i in range(len(bonds_5))]))
-    
-        #vqeLayer.barrier()
-        return vqeLayer
-    
-    # Having intial_layout is better---as then you can choose not to use all qubits. 
-    def makevqeCircuit(self, measure = False, meas_basis = "Z"): # NEED to figure out how to input measure and basis here 
-        
-        vqeCircuit = QuantumCircuit(self.num_qubits)
-        for i in range(len(self.theta_ZZ_L_1)):
-            if self.geometry == "FakeCasablancaV2":
-                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
-                vqeCircuit.barrier()
-                vqeL = self.vqeLayer_Casablanca(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
-            elif self.geometry == "FakeQuitoV2":
-                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
-                vqeCircuit.barrier()
-                vqeL = self.vqeLayer_FakeQuito(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
-            elif self.geometry == "FakeGuadalupeV2":
-                vqeCircuit.h(range(self.num_qubits)) # initialize in the |+> state
-                vqeCircuit.barrier()
-                vqeL = self.vqeLayer_FakeGuadalupeV2(self.theta_ZZ_L_1[i], self.theta_Z_L_1[i], self.theta_X_L_1[i])
-            vqeCircuit = vqeCircuit.compose(vqeL)
-            vqeCircuit.barrier()
-               
-        if measure == True:
-            if meas_basis == "Z":
-                vqeCircuit.measure_all()
-                transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
-            elif meas_basis =="X":
-                vqeCircuit.h(range(self.num_qubits))
-                vqeCircuit.measure_all()
-                transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
-            else: 
-                print("Measurement not defined")    # Y-measurements can be added
-        else: 
-            transpiled = transpile(vqeCircuit, self.backend, initial_layout = self.initial_layout)
-        return transpiled
 
 
 #circuits_vqe_no_meas = [makevqeCircuit_no_meas(theta_ZZ_L_1, theta_Z_L_1, theta_X_L_1, initial_layout)]
@@ -262,13 +109,48 @@ def executor(circuits, backend = FakeQuitoV2(),shots = 1000):
 # TODO SV calculations
 
 
+def circuit_optimized_parameters(geometry = "FakeQuitoV2"): 
+    """ this function consist of the optimized parameter for minimum energy via SV VQE optimization"""
 
+    if geometry == "FakeQuitoV2":
+        #initial_layout = [0, 1, 2, 3, 4]    
+        # VQE solution for 1 layer HVA------- hardcoded here but are originally derived from optimizing the VQE solution. (Need to check)
+        theta_Z_L_1 = -1.0903836560221376
+        theta_X_L_1 = 1.5707963013100128
+        theta_ZZ_L_1 = -1.290063556534689e-08
 
+            # VQE solution for 2 layer HVA for 4 qubit chain
+            #theta_Z_L_2 = [-0.9253781962387742, 0.05297769164990435]
+            #theta_X_L_2 = [1.1782568203539736, 0.44552055156550735]
+            #theta_ZZ_L_2 = [0.2425000962970552, -0.10748314808466695]
+    elif geometry == "FakeCasablancaV2":
+            # Casablanca geometry
+            # initial_layout = [0, 1, 2, 3, 4, 5, 6]
+            # VQE solution for 1 layer HVA for Casablanca geometry
+        theta_Z_L_1 = -1.114862237442442
+        theta_X_L_1 = 1.5707966423051756
+        theta_ZZ_L_1 = 6.874680103745465e-07
+
+            # VQE solution for 2 layer HVA for Casablanca geometry
+            #theta_Z_L_2 = [-1.0493592817846746, 0.07760329617674103]
+            #theta_X_L_2 = [1.2057488386027533, 0.34794432057731883]
+            #theta_ZZ_L_2 = [0.218276186042823, -0.16232253800006316]
+    elif geometry == "FakeGuadalupeV2":
+        # initial_layout = range(16)
+        # VQE solution for 1 layer HVA for Quadalupe geometry 
+        theta_Z_L_1 = -1.16677864
+        theta_X_L_1 = 1.57079632
+        theta_ZZ_L_1 = 4.90858079e-09
+    else: 
+        print("Geometry not supported so far")
+
+    return [theta_Z_L_1, theta_X_L_1, theta_ZZ_L_1]
 
 def main():
   
     backend_configuration = Quantum_system(backend = FakeQuitoV2(),initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")  #FakeGuadalupeV2())
-    circuits = CircuitBuilder(backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
+    opt_params_Quito =  circuit_optimized_parameters("FakeQuitoV2")
+    circuits = CircuitBuilder(params = opt_params_Quito, backend = FakeQuitoV2(), initial_layout = [0, 1, 2, 3, 4], geometry = "FakeQuitoV2")
     #print("Backend =", backend)
     #Circuits sent to tomography has to be a list
     circuits_w_no_meas = [circuits.makevqeCircuit(measure = False)]
