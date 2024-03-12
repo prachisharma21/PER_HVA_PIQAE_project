@@ -23,22 +23,22 @@ start_time = time.time()
 
 ## PER functions and steps 
 
-class Noise_tomography(Quantum_system):
-    def __init__(self, circuit, pair_samples, single_samples, depth):
-        self.circuit = circuit
-        self.pair_samples = pair_samples
-        self.single_samples = single_samples
-        self.depth = depth
-        super.__init__()
-
-    def tomography_step(self):#, pair_samples = 1,single_samples =1, depth = [2,4,8,16]):
-        experiment = tomography(circuits = self.circuits, inst_map = self.initial_layout, backend = self.backend) # add initial layout as a parameter here
-        # to generate the circuits of different depths
-        experiment.generate(samples = self.pair_samples, single_samples = self.single_samples, depths = self.depth)
-        #run the experiment
-        experiment.run(executor)
-        noisedataframe = experiment.analyze()
-        return experiment, noisedataframe
+#class Noise_tomography(Quantum_system):
+#    def __init__(self, circuit, pair_samples, single_samples, depth):
+#        self.circuit = circuit
+#        self.pair_samples = pair_samples
+#        self.single_samples = single_samples
+#        self.depth = depth
+#        super.__init__()
+#
+#    def tomography_step(self):#, pair_samples = 1,single_samples =1, depth = [2,4,8,16]):
+#        experiment = tomography(circuits = self.circuits, inst_map = self.initial_layout, backend = self.backend) # add initial layout as a parameter here
+#        # to generate the circuits of different depths
+#        experiment.generate(samples = self.pair_samples, single_samples = self.single_samples, depths = self.depth)
+#        #run the experiment
+#        experiment.run(executor)
+#        noisedataframe = experiment.analyze()
+#        return experiment, noisedataframe
     
 class error_mitigation():
     def __init__(self,experiment, expectations, samples, noise_strengths, circuit):
@@ -95,6 +95,32 @@ def executor(circuits, backend = FakeQuitoV2(),shots = 1000):
 
 # TODO SV calculations
 
+class QSimulator():
+    def __init__(self,backend):
+        # self.simulator = simulator
+        self.backend = backend
+        #self.circuits = circuits
+        #self.shots = shots
+        
+    def State_Vector_Simulator(self,circuits):
+
+        # The circuits here are without measurements
+        count = Aer.get_backend('statevector_simulator').run(circuits[0]).result().get_statevector()
+        return count
+
+    def QASM_Simulator(self,circuits,shots=1000):
+
+        # For Z measurements
+        count_QASM_Z =Aer.get_backend('qasm_simulator').run(circuits[0], shots=shots).result().get_counts()
+        # For X measurements
+        count_QASM_X =Aer.get_backend('qasm_simulator').run(circuits[1], shots=shots).result().get_counts()
+        return count_QASM_Z,count_QASM_X
+
+    def Noisy_backend_Simulato(self,circuits,shots=1000):
+        count_Z = self.backend.run(circuits[0], shots=shots).result().get_counts()
+        count_X = self.backend.run(circuits[1], shots=shots).result().get_counts()
+        return count_Z, count_X
+
 
 
 def main():
@@ -107,6 +133,13 @@ def main():
     circuits_w_no_meas = [circuits.makevqeCircuit(measure = False)]
     print(circuits_w_no_meas[0].draw())
     #print(type(circuits_w_no_meas))
+
+    # Trying state-vector simulations
+    qsimulator = QSimulator(backend = FakeQuitoV2())
+    SV_count = qsimulator.State_Vector_Simulator(circuits = circuits_w_no_meas)
+    op = Pauli('XIIII')
+    print(SV_count.expectation_value(op))
+
     # the following makes me feel that we could leave this part just as a function in main ()
     experiment,noisedataframe = tomography_step( circuits = circuits_w_no_meas , pair_samples = 1, single_samples = 1, depths = [2,4,8,16],
                                                 backend=backend_configuration.backend,initial_layout=backend_configuration.initial_layout, shots = 1000)
@@ -158,7 +191,8 @@ if __name__ == "__main__":
 # figure out how to add the measurements without making it spagetti 
 
 # TODO 
-
+# 1. MUST: Change circit for bonds list and check the circuit and uncomment the transpile function
+# 2. Change num_qubit in hamittonian script to generalize.
 # 1. UPDATE THIS SCRIPT FROM THE CLUSTER SCRIPT WITH SV AND QASM/NOISYBACKEND RESULTS FOR COMPARSION 
 # 2. IMPORT JSON FILES FOR PAULI STRINGS
 # 3. TRY AND EXPECT ROUTINE TO SEE IF PICKLE FOR TOMO EXIST THEN USE THAT OR RUN TOMOGRAPHY STEP 
