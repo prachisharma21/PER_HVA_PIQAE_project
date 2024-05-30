@@ -1,24 +1,11 @@
-# Essential imports for the calculations
-from qiskit import QuantumCircuit, Aer, transpile, ClassicalRegister
-from qiskit.visualization import plot_gate_map, plot_error_map, plot_histogram
-from qiskit.providers.fake_provider import FakeQuitoV2
-from qiskit.providers.fake_provider import FakeGuadalupeV2
-from qiskit.providers.fake_provider import FakeCasablancaV2
-from qiskit.quantum_info.operators.symplectic import Pauli
-from matplotlib import pyplot as plt
-import scipy
-import sys
-import numpy as np
-import graphviz
-import time 
+# Essential imports 
 from qiskit.quantum_info import SparsePauliOp 
-from circuit_builder import CircuitBuilder
-
-
 
 
 def model_input( J = -1, hx = -1, hz = 0.5):
-    """ this function gets the input for the problem hamiltonian: Mixed Ising field model for HVA"""
+    """
+    Function gets the input for the problem hamiltonian: Mixed Ising field model for HVA
+    """
     J = J
     hx = hx 
     hz = hz
@@ -31,7 +18,6 @@ def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
     if num == 2:
         for pauli in [ham_pauli]:
             for bond in bonds: 
-            #print(bond)
                 list_s = list(s)
                 list_s.insert(bond[0], pauli)
                 list_s.insert(bond[1], pauli)
@@ -46,22 +32,21 @@ def ham_str_creation(num_qubits = 5,ham_pauli = "Z", bonds =[], num = 2):
 
 
 def Hamiltonian_MFIM(bonds = []):
-    """To build the Mixed-Field Ising model hamiltonian with the native qubit connectivitiy of the backend"""
+    """
+    To build the Mixed-Field Ising model hamiltonian with the native qubit connectivitiy of the backend
+    """
     paulis_ZZ = ham_str_creation(num_qubits= 16,ham_pauli = "Z", bonds =bonds,num = 2)
-    #print(paulis_ZZ)
     paulis_Z = ham_str_creation(num_qubits= 16, ham_pauli = "Z", bonds =bonds,num = 1)
-    #print(paulis_Z)
     paulis_X = ham_str_creation(num_qubits= 16, ham_pauli = "X", bonds = bonds,num = 1)
     ham_ZZ = ["".join(reversed([p for p in pauli])) for pauli in paulis_ZZ]
     J, hx, hz = model_input( J = -1, hx = -1, hz = 0.5)
     hamiltonian  = SparsePauliOp(ham_ZZ, coeffs = J)+SparsePauliOp(paulis_Z, coeffs= hz)+SparsePauliOp(paulis_X, coeffs = hx)
-    #print(hamiltonian)
     return hamiltonian 
 
 
 
 def circuit_optimized_parameters(geometry = "FakeQuitoV2"): 
-    """ this function consist of the optimized parameter for minimum energy via SV VQE optimization"""
+    """ Function consist of the optimized parameters for minimum energy after the state-vector VQE optimization step"""
 
     if geometry == "FakeQuitoV2":
         #initial_layout = [0, 1, 2, 3, 4]    
