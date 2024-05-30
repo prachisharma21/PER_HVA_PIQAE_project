@@ -1,0 +1,3 @@
+-14.083566035764061
+Optimization was successful!
+optimized parameters are  [-1.16677860e+00  1.57079641e+00 -2.48389262e-08]  and lowest energy is  -27.173124.
